@@ -1,7 +1,7 @@
 import moment from 'moment'
 import parseDuration from 'duration-parser'
 
-import { sleep, MINUTE } from './utils'
+import { sleep } from './utils'
 import { createSmsClient } from './smsClient'
 import { createAdtClient } from './adtClient'
 import { createDoorTracker } from './doorTracker'
@@ -16,6 +16,8 @@ export async function main (env) {
     TWILIO_AUTH_TOKEN
   } = env
   const STALE_AFTER_MS = parseDuration(env.STALE_AFTER)
+  const REMIND_INTERVAL_MS = parseDuration(env.REMIND_INTERVAL)
+  const SESSION_KEEPALIVE_INTERVAL_MS = parseDuration(env.SESSION_KEEPALIVE_INTERVAL)
   const PING_INTERVAL_MS = parseDuration(env.PING_INTERVAL)
 
   const adtClient = await createAdtClient(ADT_USERNAME, ADT_PASSWORD)
@@ -33,7 +35,7 @@ export async function main (env) {
 
     // on left open handler
     async (name, ms) => {
-      doors.muteUntil(name, Date.now() + MINUTE)
+      doors.muteUntil(name, Date.now() + REMIND_INTERVAL_MS)
       const msInHuman = moment.duration(ms).humanize()
       await smsClient.sendMessage(ALERT_PHONE, `${name} has been open for ${msInHuman}`)
     }
@@ -43,8 +45,7 @@ export async function main (env) {
   while (true) {
     if (Date.now() >= nextDashboardLoad) {
       await adtClient.pullDashboard()
-      const betweenOneAndThree = 1 + (Math.random() * 2)
-      nextDashboardLoad = Date.now() + Math.round(MINUTE * betweenOneAndThree)
+      nextDashboardLoad = Date.now() + SESSION_KEEPALIVE_INTERVAL_MS
     }
 
     await doors.poll()
