@@ -2,7 +2,7 @@ import Twilio from 'twilio'
 
 import { fromNode } from './utils'
 
-export function createSmsClient (sid, authToken, fromPhone) {
+export function createSmsClient (sid, authToken, msgServiceSid) {
   const client = new Twilio(sid, authToken)
 
   class SmsClient {
@@ -10,7 +10,7 @@ export function createSmsClient (sid, authToken, fromPhone) {
       return fromNode(cb => {
         client.sendMessage({
           to: to,
-          from: fromPhone,
+          messagingServiceSid: msgServiceSid,
           body: message
         }, cb)
       })

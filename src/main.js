@@ -11,9 +11,9 @@ export async function main (env) {
     ALERT_PHONE,
     ADT_USERNAME,
     ADT_PASSWORD,
-    TWILIO_PHONE,
     TWILIO_ACCOUNT_SID,
-    TWILIO_AUTH_TOKEN
+    TWILIO_AUTH_TOKEN,
+    TWILIO_MESSAGING_SERVICE_SID
   } = env
   const STALE_AFTER_MS = parseDuration(env.STALE_AFTER)
   const REMIND_INTERVAL_MS = parseDuration(env.REMIND_INTERVAL)
@@ -21,7 +21,7 @@ export async function main (env) {
   const PING_INTERVAL_MS = parseDuration(env.PING_INTERVAL)
 
   const adtClient = await createAdtClient(ADT_USERNAME, ADT_PASSWORD)
-  const smsClient = await createSmsClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE)
+  const smsClient = await createSmsClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_MESSAGING_SERVICE_SID)
 
   const doors = createDoorTracker(
     adtClient,
