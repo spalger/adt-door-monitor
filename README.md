@@ -1,6 +1,6 @@
 # adt-door-monitor
 
-Periodically check the ADT Pulse dashboard for the status of any door in your house and send an SMS when the status changes.
+Periodically check the ADT Pulse dashboard for the status of doors in your house. Send an SMS when the status changes.
 
 # setup
  - copy `.env.default` to `.env` and fill out the missing values
