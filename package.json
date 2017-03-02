@@ -1,0 +1,26 @@
+{
+  "name": "door-monitor",
+  "version": "0.0.0",
+  "main": "index.js",
+  "author": "spalger <spalger@users.noreply.github.com>",
+  "license": "Apache-2.0",
+  "scripts": {
+    "start": "node build/index.js",
+    "build": "babel -d build -D -s inline src",
+    "deploy": "docker-compose up -d --build --remove-orphans",
+    "logs": "docker-compose logs -f"
+  },
+  "dependencies": {
+    "dotenv": "^4.0.0",
+    "twilio": "^2.11.1"
+  },
+  "devDependencies": {
+    "babel": "^6.23.0",
+    "babel-cli": "^6.23.0",
+    "babel-plugin-transform-es2015-modules-commonjs": "^6.23.0",
+    "eslint": "^3.16.1",
+    "eslint-config-standard": "^7.0.0",
+    "eslint-plugin-promise": "^3.5.0",
+    "eslint-plugin-standard": "^2.0.1"
+  }
+}

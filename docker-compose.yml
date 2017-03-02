@@ -1,0 +1,10 @@
+version: '2'
+services:
+  door-monitor:
+    build:
+      context: .
+    container_name: door-monitor
+    restart: always
+    env_file:
+      - .env.default
+      - .env
