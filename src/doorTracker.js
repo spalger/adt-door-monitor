@@ -1,57 +1,59 @@
 import { uniq } from './utils'
 
-export function createDoorTracker (adtClient, staleAfterMs, onChange, onLeftOpen) {
+const asyncMap = async (arr, fn) => Promise.all(arr.map(fn))
+
+export function createDoorTracker(adtClient, staleAfterMs, onChange, onLeftOpen) {
   const history = [{}, {}]
   const knownStates = {}
 
-  async function getDoorStatus () {
+  async function getDoorStatus() {
     const homeView = await adtClient.getHomeView()
     return homeView.items
       .filter(i => i.name.includes('Door'))
       .reduce(
         (acc, { name, state }) => Object.assign(acc, {
-          [name]: state.statusTxt.includes('Closed') ? 'closed' : 'open'
+          [name]: state.statusTxt.includes('Closed') ? 'closed' : 'open',
         }),
-        {}
+        {},
       )
   }
 
-  function getKnownState (name) {
+  function getKnownState(name) {
     return knownStates[name] || {}
   }
 
-  function markStateStart (name, state) {
+  function markStateStart(name, state) {
     knownStates[name] = { state, start: Date.now() }
   }
 
-  function getTimeInState (name) {
+  function getTimeInState(name) {
     const { start } = getKnownState(name)
     return start ? Date.now() - start : 0
   }
 
-  function isMuted (name) {
+  function isMuted(name) {
     return getKnownState(name).muteUntil >= Date.now()
   }
 
   class DoorTracker {
-    muteUntil (name, time) {
+    muteUntil(name, time) {
       knownStates[name] = Object.assign(
         getKnownState(name),
-        { muteUntil: time }
+        { muteUntil: time },
       )
     }
 
-    async poll () {
+    async poll() {
       history.unshift(await getDoorStatus())
       history.length = 2
 
       const [currentStates, prevStates] = history
       const allNames = uniq([
         ...Object.keys(currentStates),
-        ...Object.keys(prevStates)
+        ...Object.keys(prevStates),
       ])
 
-      for (const name of allNames) {
+      await asyncMap(allNames, async name => {
         const current = currentStates[name]
         const prev = prevStates[name]
 
@@ -66,7 +68,7 @@ export function createDoorTracker (adtClient, staleAfterMs, onChange, onLeftOpen
           markStateStart(name, current)
           await onChange(name, current, prev)
         }
-      }
+      })
     }
   }
 

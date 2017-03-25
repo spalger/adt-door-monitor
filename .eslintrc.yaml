@@ -1,2 +1,6 @@
 ---
-extends: standard
+extends: "@spalger/personal/es6"
+rules:
+  no-constant-condition:
+    - error
+    - checkLoops: false

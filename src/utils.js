@@ -4,21 +4,19 @@ const CHROME_UA = [
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3)',
   'AppleWebKit/537.36 (KHTML, like Gecko)',
   'Chrome/56.0.2924.87',
-  'Safari/537.36'
+  'Safari/537.36',
 ].join(' ')
 
-export const uniq = arr => {
-  const uniqs = []
-  for (const a of arr) {
-    if (!uniqs.includes(a)) {
-      uniqs.push(a)
-    }
-  }
-  return uniqs
-}
+export const uniq = arr => (
+  arr.reduce((uniqs, a) => (
+    uniqs.includes(a) ? uniqs : [...uniqs, a]
+  ), [])
+)
 
 export const fromNode = fn => new Promise((resolve, reject) => {
-  fn((err, value) => err ? reject(err) : resolve(value))
+  fn((err, value) => (
+    err ? reject(err) : resolve(value)
+  ))
 })
 
 export const createRequest = () => {
@@ -33,14 +31,14 @@ export const createRequest = () => {
       followRedirect: true,
       followAllRedirects: true,
       headers: {
-        'User-Agent': CHROME_UA
-      }
+        'User-Agent': CHROME_UA,
+      },
     }, cb)
   })
 
   return {
     get: (...args) => req('GET', ...args),
-    post: (...args) => req('POST', ...args)
+    post: (...args) => req('POST', ...args),
   }
 }
 
