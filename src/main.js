@@ -3,9 +3,9 @@ import parseDuration from 'duration-parser'
 import log from 'winston'
 
 import { sleep } from './utils'
-import { createSmsClient } from './smsClient'
-import { createAdtClient } from './adtClient'
-import { createDoorTracker } from './doorTracker'
+import { createSmsClient } from './sms-client'
+import { createAdtClient } from './adt-client'
+import { createDoorTracker } from './door-tracker'
 
 export async function main(env) {
   const {
