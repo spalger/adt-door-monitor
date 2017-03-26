@@ -1,9 +1,19 @@
 import { readFileSync } from 'fs'
 
+import log from 'winston'
 import { parse } from 'dotenv'
 
 export function parseEnvFile(path) {
-  return parse(readFileSync(path, 'utf8'))
+  try {
+    return parse(readFileSync(path, 'utf8'))
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      log.info('env file %j missing', path)
+      return {}
+    }
+
+    throw err
+  }
 }
 
 export function createEnv(src) {

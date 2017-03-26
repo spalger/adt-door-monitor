@@ -6,8 +6,7 @@ RUN npm install
 
 COPY src src
 COPY .babelrc .babelrc
-COPY .env .env
-COPY .env.default .env.default
+COPY .env* ./
 COPY yarn.lock yarn.lock
 
 RUN npm run build
