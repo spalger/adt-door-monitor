@@ -1,21 +1,26 @@
-import moment from 'moment'
+import { resolve } from 'path'
+
 import parseDuration from 'duration-parser'
 import log from 'winston'
 
-import { sleep } from './utils'
 import { createSmsClient } from './sms-client'
 import { createAdtClient } from './adt-client'
-import { createDoorTracker } from './door-tracker'
+import { createDb } from './db'
+import { eventValuesOfType } from './events'
+import { createAdtEvents } from './adt-events'
+import { createIssuesForDoors } from './issues'
+import { createSmsResponder } from './sms-responder'
 
 export async function main(env) {
   const {
-    ALERT_PHONE,
     ADT_USERNAME,
     ADT_PASSWORD,
     TWILIO_ACCOUNT_SID,
     TWILIO_AUTH_TOKEN,
     TWILIO_MESSAGING_SERVICE_SID,
+    DATA_DIR,
   } = env
+  const PORT = parseInt(env.PORT, 10)
   const STALE_AFTER_MS = parseDuration(env.STALE_AFTER)
   const REMIND_INTERVAL_MS = parseDuration(env.REMIND_INTERVAL)
   const SESSION_KEEPALIVE_INTERVAL_MS = parseDuration(env.SESSION_KEEPALIVE_INTERVAL)
@@ -23,35 +28,50 @@ export async function main(env) {
 
   const adtClient = await createAdtClient(ADT_USERNAME, ADT_PASSWORD)
   const smsClient = await createSmsClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_MESSAGING_SERVICE_SID)
+  const subscriberDb = await createDb(resolve(DATA_DIR, 'subscribers'))
+  const smsResponder = await createSmsResponder(subscriberDb, TWILIO_AUTH_TOKEN, PORT)
 
-  const doors = createDoorTracker(
+  const adtEvents = createAdtEvents({
     adtClient,
-    STALE_AFTER_MS,
+    keepAliveInterval: SESSION_KEEPALIVE_INTERVAL_MS,
+    pingInterval: PING_INTERVAL_MS,
+  })
 
-    // on change handler
-    (name, current, prev) => {
-      if (!prev) log.info('initialized', name, 'as', current)
-      else log.info(name, prev, '->', current)
-    },
+  const getDoors = () => eventValuesOfType(adtEvents.share(), 'door')
 
-    // on left open handler
-    async (name, ms) => {
-      doors.muteUntil(name, Date.now() + REMIND_INTERVAL_MS)
-      const msInHuman = moment.duration(ms).humanize()
-      await smsClient.sendMessage(ALERT_PHONE, `${name} has been open for ${msInHuman}`)
-    },
-  )
+  await Promise.all([
+    // run the smsResponder server
+    smsResponder.listen(),
 
-  let nextDashboardLoad = 0
-  while (true) {
-    /* eslint-disable no-await-in-loop */
-    if (Date.now() >= nextDashboardLoad) {
-      await adtClient.pullDashboard()
-      nextDashboardLoad = Date.now() + SESSION_KEEPALIVE_INTERVAL_MS
-    }
+    // log adt fetch errors
+    eventValuesOfType(adtEvents.share(), 'error')
+      .forEach(error => {
+        log.info('ADT ERROR', error)
+      }),
 
-    await doors.poll()
-    await sleep(PING_INTERVAL_MS)
-    /* eslint-enable no-await-in-loop */
-  }
+    // log doors discovered
+    getDoors()
+      .groupBy(door => door.name)
+      .mergeMap(group =>
+          group
+            .first()
+            .forEach(door => {
+              log.info('discovered door %j', door)
+            }),
+        )
+      .toPromise(),
+
+    // send issues to subscribers
+    createIssuesForDoors(getDoors(), { initialDelay: STALE_AFTER_MS, reminderInterval: REMIND_INTERVAL_MS })
+      .mergeMap(issue =>
+        subscriberDb
+          .getAll()
+          .filter(s => !s.muteUntil || s.muteUntil < Date.now())
+          .mergeMap(subscriber => smsClient.sendMessage(
+            subscriber.phone,
+            issue.text,
+          )),
+      )
+      .toPromise(),
+  ])
 }

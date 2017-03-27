@@ -1,0 +1,50 @@
+N doors, want to generate an "issue" when a door has been open for 5 minutes, and one more ever minute after that.
+
+constraints:
+
+ - Doors have a `name: String` and `closed: Boolean` property.
+ - Every so often the current state of each door is emitted, even when nothing has changed
+
+```js
+
+function getDoorChanges() {
+  return Rx.Observable.interval(5000)
+    .mergeMap(() => new Rx.Observable(observer => {
+      getCurrentDoorStates()
+        .then(states => states.forEach(s => observer.next(s)))
+        .then(() => observer.complete(), err => observer.error(err))
+    }))
+}
+
+function getDoorChanges(doors) {
+  return doors
+    .groupBy(door => door.name)
+    .mergeMap(group => group.distinctUntilKeyChanged('closed'))
+}
+
+regularlyGetDoors()
+  .groupBy(d => d.name)
+  .mergeMap(group =>
+    group
+      .distinctUntilKeyChanged('closed')
+      .switchMap({ closed } => {
+        if (closed) {
+          return Rx.Observable.of()
+        }
+        
+        return new Rx.Observable(observer => {
+          let timer
+          
+          function sendIssue() {
+            timer = setTimeout(sendIssue, 1000).unref();
+          }
+          
+          timer = setTimeout(sendIssue, 5000).unref();
+          
+          return () => {
+            clearTimeout(timer);
+          };
+        });
+      });
+  )
+```

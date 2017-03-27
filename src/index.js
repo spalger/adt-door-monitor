@@ -15,3 +15,7 @@ main(env).catch(err => {
   log.info('FATAL ERROR', err.stack || err.message || err)
   process.exitCode = 1
 })
+
+process.on('unhandledRejection', err => {
+  log.error('An unhandledRejection occurred', err)
+})

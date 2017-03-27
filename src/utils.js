@@ -42,6 +42,11 @@ export const createRequest = () => {
   }
 }
 
-export const sleep = ms => new Promise(resolve => {
-  setTimeout(resolve, ms)
-})
+export const nextify = (fn) => async (req, res, next) => {
+  try {
+    const resp = await fn(req, res)
+    next(undefined, resp)
+  } catch (err) {
+    next(err)
+  }
+}
